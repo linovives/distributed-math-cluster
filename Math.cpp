@@ -14,10 +14,20 @@ matrix_t Math::multiply(const matrix_t& A, const matrix_t& B) {
     C.cols = B.cols;
     C.data.resize(C.rows * C.cols, 0);
 
-    // TODO: Implementar la multiplicación de matrices AxB = C
-    // 1. Comprobar dimensiones (A.cols == B.rows).
-    // 2. Usar 3 bucles anidados.
-    // 3. Usar helpers getVal(A, i, k) y setVal(C, i, j, val).
+    if(A.cols  != B.cols){
+        cout << "Error: Dimensiones incompatibles" << endl;
+        C.rows = 0;
+        C.cols = 0;
+        return C;
+    } 
+    
+    for(int i = 0; i < A.rows; i++){
+        for(int j = 0; j < B.cols; j++){
+            for(int k = 0; k < A.cols; k++){
+                setVal(C, i, j, getVal(C, i, j) + getVal(A, i, k) * getVal(B, k, j));
+            }
+        }
+    }
     
     return C;
 }
