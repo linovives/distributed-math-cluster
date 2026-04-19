@@ -46,12 +46,47 @@ matrix_t Math::multiply(const matrix_t& A, const matrix_t& B) {
 
     // TODO: Implementar el Proxy
     // 1. Conectar al Broker (initClient).
+
+    connection_t conn = initClient(brokerIp, brokerPort);
+    if(!conn.alive){
+        cout << "Error: no se pudo conectar al broker" << endl;
+        return C;
+    }
     // 2. Empaquetar MSG_CALC_REQ, Matriz A y Matriz B.
-    // 3. Enviar (sendMSG).
-    // 4. Recibir respuesta (recvMSG).
+
+    vector<unsigned char> buffer;
+    pack(buffer, MSG_CALC_REQ);
+
+    pack(buffer, A.rows);
+    pack(buffer, A.cols);
+    packv(buffer, (int*)A.data.data(), A.data.size());
+
+    pack(buffer, B.rows);
+    pack(buffer, B.cols);
+    packv(buffer, (int*)B.data.data(), B.data.size());
+
+    // 3. Enviar 
+
+    sendMSG(conn.serverId, buffer);
+
+    // 4. Recibir respuesta 
+
+    buffer.clear();
+    recvMSG(conn.serverId, buffer);
+
     // 5. Desempaquetar MSG_CALC_RES y Matriz C.
+
+    MathMsgTypes tipo = unpack<MathMsgTypes>(buffer);
+    if(tipo == MSG_CALC_RES){
+        C.rows = unpack<int>(buffer);
+        C.cols = unpack<int>(buffer);
+        C.data.resize(C.rows * C.cols);
+        unpackv(buffer, C.data.data(), C.rows*C.cols);
+    }
+
     // 6. Cerrar conexión.
     
+    closeConnection(conn.serverId);
     return C;
 }
 
