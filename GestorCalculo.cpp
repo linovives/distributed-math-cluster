@@ -22,15 +22,34 @@ void GestorCalculo::atiendeCliente(int clientId) {
 
         switch (tipo) {
             case MSG_CALC_REQ: {
-                // TODO: 1. Desempaquetar Matriz A (rows, cols, data).
-                // TODO: 2. Desempaquetar Matriz B.
-                
-                // TODO: 3. Llamar a la lógica local: 
-                // matrix_t C = mathLocal.multiply(A, B);
+                // 1. Desempaquetar Matriz A (rows, cols, data).
+                matrix_t A;
+                A.rows = unpack<int>(buffer);
+                A.cols = unpack<int>(buffer);
+                A.data.resize(A.rows * A.cols);
+                unpackv(buffer, A.data.data(), A.rows * A.cols);
 
-                // TODO: 4. Empaquetar MSG_CALC_RES y Matriz C.
+                // 2. Desempaquetar Matriz B.
+                matrix_t B;
+                B.rows = unpack<int>(buffer);
+                B.cols = unpack<int>(buffer);
+                B.data.resize(B.rows * B.cols);
+                unpackv(buffer, B.data.data(), B.rows * B.cols);
+
+
+                // 3. Calcular:
+                matrix_t C = mathLocal.multiply(A, B);
+
+                // 4. Empaquetar MSG_CALC_RES y Matriz C.
+                buffer.clear();
+                pack(buffer, MSG_CALC_RES);
+                pack(buffer, C.rows);
+                pack(buffer, C.cols);
+                packv(buffer, C.data.data(), C.data.size());
                 
-                // TODO: 5. Enviar respuesta (sendMSG).
+                // 5. Enviar respuesta 
+                sendMSG(clientId, buffer);
+                salir = true;
                 
             } break;
 
