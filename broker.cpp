@@ -54,9 +54,14 @@ void handleConnection(int clientId) {
 
     if (tipo == MSG_LOGIN_WORKER) {
         int wId = unpack<int>(buffer);
-        // TODO: Registrar nuevo worker en el mapa 'workers'.
-        // Inicializar lastKA y busy=false.
-        // NO cerrar la conexión (la necesitamos para enviar tareas).
+        WorkerInfo w;
+        w.id = wId;
+        w.socketId = clientId;
+        w.busy = false;
+        w.lastKA = chrono::system_clock::now();
+        mtxWorkers.lock();
+        workers[wId] = w;
+        mtxWorkers.unlock();
         addLog("NUEVO WORKER: ID " + to_string(wId));
     }
     else if (tipo == MSG_WORKER_KA) { // Extra
@@ -73,24 +78,57 @@ void handleConnection(int clientId) {
         int targetSocket = -1;
         int targetId = -1;
 
-        // TODO: 1. Buscar un Worker libre (busy == false). Marcarlo como busy.
+        // Buscar un Worker libre (busy == false). Marcarlo como busy.
+        mtxWorkers.lock();
+
+        for(auto& [id, w] : workers){
+            if(!w.busy){
+                w.busy = true;
+                targetSocket = w.socketId;
+                targetId = w.id;
+                break;
+            }
+        }
+        mtxWorkers.unlock();
 
         if (targetSocket != -1) {
-            // A. DESEMPAQUETAR PEDAGÓGICO
-            // TODO: Desempaquetar A y B para verificar datos y loguear dimensiones.
-            
-            addLog("CALC: Asignado a Worker " + to_string(targetId));
+            // A. Desempaquetar para loguear
+            int rA = unpack<int>(buffer);
+            int cA = unpack<int>(buffer);
+            int sizeA = rA * cA;
+            vector<int> dataA(sizeA);
+            unpackv(buffer, dataA.data(), sizeA);
 
-            // B. REEMPAQUETAR
-            // TODO: Volver a empaquetar MSG_CALC_REQ + A + B en un nuevo buffer.
+            int rB = unpack<int>(buffer);
+            int cB = unpack<int>(buffer);
+            int sizeB = rB * cB;
+            vector<int> dataB(sizeB);
+            unpackv(buffer, dataB.data(), sizeB);
 
-            // 3. Enviar al Worker (targetSocket).
-            
-            // 4. Esperar respuesta del Worker (recvMSG).
-            
-            // 5. Enviar respuesta al Cliente (clientId).
+            addLog("CALC: Matriz " + to_string(rA) + "x" + to_string(cA) + " asignada a Worker " + to_string(targetId));
 
-            // 6. Liberar Worker (busy = false).
+            // B. Reempaquetar todo de nuevo
+            vector<unsigned char> fwd;
+            pack(fwd, MSG_CALC_REQ);
+            pack(fwd, rA); pack(fwd, cA);
+            packv(fwd, dataA.data(), sizeA);
+            pack(fwd, rB); pack(fwd, cB);
+            packv(fwd, dataB.data(), sizeB);
+
+            // C. Enviar al Worker
+            sendMSG(targetSocket, fwd);
+
+            // D. Esperar respuesta del Worker
+            vector<unsigned char> response;
+            recvMSG(targetSocket, response);
+
+            // E. Enviar respuesta al Cliente
+            sendMSG(clientId, response);
+
+            // F. Liberar Worker
+            mtxWorkers.lock();
+            workers[targetId].busy = false;
+            mtxWorkers.unlock();
         } else {
             addLog("CALC RECHAZADO: Sin workers.");
         }
