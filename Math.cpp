@@ -14,7 +14,7 @@ matrix_t Math::multiply(const matrix_t& A, const matrix_t& B) {
     C.cols = B.cols;
     C.data.resize(C.rows * C.cols, 0);
 
-    if(A.cols  != B.cols){
+    if(A.cols  != B.rows){
         cout << "Error: Dimensiones incompatibles" << endl;
         C.rows = 0;
         C.cols = 0;
