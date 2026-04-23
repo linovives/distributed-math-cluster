@@ -106,8 +106,11 @@ void handleConnection(int clientId) {
         for(string& log : systemLogs){
             int len = log.size();
             pack(buffer, len);
-            packv(buffer, (char*)log.data(), len);
+            for(char c: log){
+                pack(buffer, c);
+            }
         }
+        sendMSG(clientId, buffer);
         closeConnection(clientId);
     }
     else if (tipo == MSG_CALC_REQ) {
