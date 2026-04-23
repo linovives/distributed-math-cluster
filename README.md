@@ -1,58 +1,115 @@
-MathCluster — README
+# Distributed Math Cluster
+Matrix Multiplication · Broker/Worker Pattern · Fault Tolerance
 
-Descripción general
-- Demo de multiplicación de matrices distribuida con tres roles: `broker`, `worker`, `client`.
+![C++](https://img.shields.io/badge/C++-17-blue)
+![CMake](https://img.shields.io/badge/Build-CMake-red)
+![Sockets](https://img.shields.io/badge/Network-POSIX%20Sockets-lightgrey)
+![Linux](https://img.shields.io/badge/Platform-Linux%20%2F%20WSL-yellow)
 
-Compilación
+## Overview
+
+Distributed computing system in C++ that offloads CPU-intensive matrix multiplications
+across multiple worker nodes, coordinated by a central broker.
+
+Built as a practical implementation of the **Proxy / Skeleton** pattern studied in Distributed Systems,
+where the client has no knowledge of the underlying network - it just calls `multiply()`.
+
+```
+[Client] ──── MSG_CALC_REQ ────► [Broker] ──── forwards ────► [Worker 1]
+         ◄─── MSG_CALC_RES ────           ◄─── result ──────   [Worker 2]
+                                                                [Worker N]
+```
+
+## Three Roles, One System
+
+| Component | Role | Key file |
+|-----------|------|----------|
+| **Client** | CLI interface. Loads matrices, requests multiplications, shows results | `MathRemota.cpp` (Proxy) |
+| **Broker** | Load balancer. Routes tasks, detects dead nodes, keeps event log | `broker.cpp` |
+| **Worker** | Compute node. Unpacks matrices, multiplies, returns result | `GestorCalculo.cpp` (Skeleton) |
+
+## Features
+
+- **Transparent RPC** - client calls `multiply()` as if it were local; serialization happens under the hood
+- **Load balancing** - broker picks the first available worker for each request
+- **Keep Alive** - workers send a heartbeat every 2s; broker drops nodes silent for 10+ seconds
+- **Remote logs** - client can pull the broker's full event history with the `log` command
+
+## Requirements
+
+- GCC with C++17 support
+- CMake 3.10+
+- Linux or WSL
+
+## Build
+
 ```bash
-mkdir -p build
-cd build
+mkdir -p build && cd build
 cmake ..
 make -j
 ```
 
-Ejecución manual (flujo de desarrollo)
-- Inicia el broker (puerto por defecto 9000):
+Produces three executables in `build/`: `broker`, `server`, `client`.
+
+## Usage
+
+**1. Start the broker:**
 ```bash
-./broker 9000
-```
-- Inicia uno o más workers (cada uno se registra con el broker):
-```bash
-./worker 127.0.0.1 9000
-```
-- Inicia el cliente (CLI interactivo):
-```bash
-./client 127.0.0.1 9000
-```
-- Ejemplo de comandos del cliente dentro de la CLI:
-```
-load ../sampleA.txt A
-load ../sampleB.txt B
-mult A B C
-save C ../out.txt
-exit
+./build/broker 9000
 ```
 
-Prueba automatizada
-- Un script helper `run_test.sh` compila el proyecto, inicia broker + 2 workers, ejecuta el cliente con los comandos anteriores, escribe logs en `logs/` y produce `out.txt`.
+**2. Start one or more workers:**
+```bash
+./build/server 127.0.0.1 9000
+```
 
-Ejecutar la prueba
+**3. Start the client:**
+```bash
+./build/client 127.0.0.1 9000
+```
+
+### Client commands
+
+| Command | Description |
+|---------|-------------|
+| `load <file> <var>` | Load a matrix from disk into memory |
+| `save <var> <file>` | Save a matrix from memory to disk |
+| `mult <A> <B> <C>` | Multiply A × B and store result in C |
+| `log` | Fetch and print the broker's event log |
+| `exit` | Close the client |
+
+## Automated Test
+
 ```bash
 chmod +x run_test.sh
 ./run_test.sh
 ```
 
-Resultado esperado
-- `out.txt` debe contener la matriz multiplicada (para los archivos de ejemplo incluidos):
+Builds the project, starts broker + 2 workers, runs the client and checks the result.
+Logs are written to `logs/`.
+
+### Expected output
+
+For the included sample matrices (`sampleA.txt` × `sampleB.txt`):
+
 ```
 2 2
 58 64
 139 154
 ```
 
-Notas y solución de problemas
-- El proyecto depende de `utils.h` / `utils.cpp` para helpers de socket y funciones `pack`/`unpack`; estos archivos están incluidos en el repositorio.
-- El broker usa threads desacoplados y una cola `waitingClients`; evita refactorizar el flujo de red sin preservar estos comportamientos.
+## Project Structure
 
-Logs
-- `run_test.sh` escribe logs de ejecución en `logs/broker.log`, `logs/worker1.log`, `logs/worker2.log`, `logs/client.log`.
+```
+├── Math.h / Math.cpp           # Local multiplication logic
+├── MathRemota.cpp              # Client-side Proxy (serialization + RPC)
+├── GestorCalculo.h / .cpp      # Worker-side Skeleton (deserialization + compute)
+├── broker.cpp                  # Central router with load balancing and Keep Alive
+├── server.cpp                  # Worker process
+├── main_math.cpp               # Client CLI
+├── utils.h / utils.cpp         # Socket helpers, pack / unpack
+├── structures.h                # Shared types (matrix_t, MathMsgTypes)
+├── sampleA.txt / sampleB.txt   # Example matrices
+└── run_test.sh                 # End-to-end automated test
+```
+
