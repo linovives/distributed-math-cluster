@@ -94,6 +94,30 @@ matrix_t Math::multiply(const matrix_t& A, const matrix_t& B) {
 void Math::downloadLog() {
     // TODO (EXTRA):
     // 1. Conectar al Broker.
+    connection_t conn = initClient(brokerIp, brokerPort);
+    if(!conn.alive){
+        return;
+    }
+
     // 2. Solicitar logs (MSG_LOG_REQ).
+    vector<unsigned char> buffer;
+    pack(buffer, MSG_LOG_REQ);
+    sendMSG(conn.serverId, buffer);
+
+    buffer.clear();
+    recvMSG(conn.serverId, buffer);
+
+    MathMsgTypes tipo = unpack<MathMsgTypes>(buffer);
+    if(tipo == MSG_LOG_RES){
+        int numLogs = unpack<int>(buffer);
+        for(int i = 0; i < numLogs; i++){
+            int len = unpack<int>(buffer);
+            vector<char> str(len);
+            unpackv(buffer, str.data(), len);
+            cout << string(str.begin(), str.end()) << endl;
+        }
+    }
+    closeConnection(conn.serverId);
+
     // 3. Recibir respuesta, desempaquetar e imprimir por pantalla.
 }
