@@ -25,10 +25,10 @@ BROKER_PID=$!
 sleep 1
 
 echo "Starting worker 1..."
-./worker 127.0.0.1 9000 > "$LOG_DIR/worker1.log" 2>&1 &
+./server 127.0.0.1 9000 > "$LOG_DIR/worker1.log" 2>&1 &
 W1=$!
 echo "Starting worker 2..."
-./worker 127.0.0.1 9000 > "$LOG_DIR/worker2.log" 2>&1 &
+./server 127.0.0.1 9000 > "$LOG_DIR/worker2.log" 2>&1 &
 W2=$!
 
 sleep 1
