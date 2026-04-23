@@ -38,10 +38,24 @@ void addLog(string msg) {
 void cleanerThread() {
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(2));
-        
         // TODO (EXTRA): Recorrer el mapa de workers.
         // Si (now - lastKA) > 10 segundos -> Eliminar worker y cerrar su socket.
         // Recordar usar mtxWorkers.
+        mtxWorkers.lock();
+        auto now = chrono::system_clock::now();
+        map<int, WorkerInfo>::iterator it = workers.begin();
+        while(it != workers.end()){
+            auto diff = chrono::duration_cast<chrono::seconds>(now - it->second.lastKA).count();
+            if(diff > 10){
+                addLog("TIMEOUT: Worker " + to_string(it->first) + " eliminado");
+                closeConnection(it->second.socketId);
+                it = workers.erase(it);
+            }
+            else{
+                it++;
+            }
+        }
+
     }
 }
 
@@ -154,8 +168,8 @@ int main(int argc, char** argv) {
     addLog("BROKER INICIADO: " + to_string(port));
     
     // Iniciar hilo limpiador (Descomentar al implementar extra)
-    // std::thread thCleaner(cleanerThread);
-    // thCleaner.detach();
+    std::thread thCleaner(cleanerThread);
+    thCleaner.detach();
 
     while (true) {
         while (!checkClient()) std::this_thread::sleep_for(std::chrono::milliseconds(50));
