@@ -75,7 +75,6 @@ void handleConnection(int clientId) {
 
     if (tipo == MSG_LOGIN_WORKER) {
         int wId = unpack<int>(buffer);
-        cout << "DEBUG: Login worker " << wId << endl;
         WorkerInfo w;
         w.id = wId;
         w.socketId = clientId;
@@ -99,6 +98,16 @@ void handleConnection(int clientId) {
     }
     else if (tipo == MSG_LOG_REQ) { // Extra
         // TODO: Enviar historial 'systemLogs' al cliente.
+        vector<unsigned char> buffer;
+        pack(buffer, MSG_LOG_RES);
+
+        int numLogs = systemLogs.size();
+        pack(buffer, numLogs);
+        for(string& log : systemLogs){
+            int len = log.size();
+            pack(buffer, len);
+            packv(buffer, (char*)log.data(), len);
+        }
         closeConnection(clientId);
     }
     else if (tipo == MSG_CALC_REQ) {
