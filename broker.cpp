@@ -38,6 +38,7 @@ void addLog(string msg) {
 void cleanerThread() {
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(2));
+        vector<string> toLog;
         // TODO (EXTRA): Recorrer el mapa de workers.
         // Si (now - lastKA) > 10 segundos -> Eliminar worker y cerrar su socket.
         // Recordar usar mtxWorkers.
@@ -47,7 +48,7 @@ void cleanerThread() {
         while(it != workers.end()){
             auto diff = chrono::duration_cast<chrono::seconds>(now - it->second.lastKA).count();
             if(diff > 10){
-                addLog("TIMEOUT: Worker " + to_string(it->first) + " eliminado");
+                toLog.push_back("TIMEOUT: Worker " + to_string(it->first) + " eliminado");                
                 closeConnection(it->second.socketId);
                 it = workers.erase(it);
             }
@@ -56,7 +57,13 @@ void cleanerThread() {
             }
         }
 
+        mtxWorkers.unlock();
+
+        for(string& msg : toLog){
+            addLog(msg);
+        }
     }
+
 }
 
 void handleConnection(int clientId) {
@@ -68,6 +75,7 @@ void handleConnection(int clientId) {
 
     if (tipo == MSG_LOGIN_WORKER) {
         int wId = unpack<int>(buffer);
+        cout << "DEBUG: Login worker " << wId << endl;
         WorkerInfo w;
         w.id = wId;
         w.socketId = clientId;
@@ -84,9 +92,9 @@ void handleConnection(int clientId) {
         mtxWorkers.lock();
         if(workers.count(wId)){
             workers[wId].lastKA = chrono::system_clock::now();
-            addLog("KA: Worker " + to_string(wId) + " sigue vivo");
         }
         mtxWorkers.unlock();
+        addLog("KA: Worker " + to_string(wId) + " sigue vivo");
         closeConnection(clientId);
     }
     else if (tipo == MSG_LOG_REQ) { // Extra
