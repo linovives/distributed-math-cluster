@@ -66,6 +66,13 @@ void handleConnection(int clientId) {
     }
     else if (tipo == MSG_WORKER_KA) { // Extra
         // TODO: Actualizar lastKA del worker.
+        int wId = unpack<int>(buffer);
+        mtxWorkers.lock();
+        if(workers.count(wId)){
+            workers[wId].lastKA = chrono::system_clock::now();
+            addLog("KA: Worker " + to_string(wId) + " sigue vivo");
+        }
+        mtxWorkers.unlock();
         closeConnection(clientId);
     }
     else if (tipo == MSG_LOG_REQ) { // Extra
