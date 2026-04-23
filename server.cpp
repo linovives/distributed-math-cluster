@@ -19,9 +19,19 @@ void keepAliveThread() {
     while (running) {
         // TODO (EXTRA): Implementar el envío periódico de señales de vida.
         // 1. Dormir el hilo 2 segundos.
+        std::this_thread::sleep_for(std::chrono::seconds(2));
         // 2. Crear una conexión efímera con initClient.
         // 3. Enviar mensaje MSG_WORKER_KA con myId.
         // 4. Cerrar conexión.
+
+        connection_t conn = initClient(brokerIp, brokerPort);
+        if(conn.alive){
+            vector <unsigned char> buffer;
+            pack(buffer, MSG_WORKER_KA);
+            pack(buffer, myId);
+            sendMSG(conn.serverId, buffer);
+            closeConnection(conn.serverId);
+        }
         
         std::this_thread::sleep_for(std::chrono::seconds(2)); // Placeholder para que no consuma CPU al 100%
     }
